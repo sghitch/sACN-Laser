@@ -21,6 +21,7 @@ BSD license, all text above must be included in any redistribution
 #include <SPI.h>
 #include <Ethernet.h>
 #include <E131.h>
+#include <string.h>
 
 #define BOARD0_ADDR 0x40
 #define BOARD1_ADDR 0x41
@@ -30,9 +31,13 @@ BSD license, all text above must be included in any redistribution
 
 #define UNIVERSE 1
 
-int levels[50];
 
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0x2F, 0x1E, 0xE3 };
+IPAddress dnsAddr(10, 101, 22, 1);
+IPAddress gateway(10, 101, 22, 1);
+IPAddress subnet(255, 255, 0, 0);
+IPAddress ip(10, 101, 22, 10);
+
 E131 e131;
 
 // called this way, it uses the default address 0x40
@@ -69,37 +74,38 @@ void setup()
 	delay(10);
 
 	/* Configure via DHCP and listen Unicast on the default port */
-	e131.begin(mac);
+	e131.begin(mac, ip, subnet, gateway, dnsAddr);
 }
 
 void setLevels()
 {
 	for (int i = 0; i < 10; i++)
 	{
-		pmw0.setPWM(i, 0, levels[i] * (4096 / 512));
-		pmw1.setPWM(i, 0, levels[i + 10] * (4096 / 512));
-		pmw2.setPWM(i, 0, levels[i + 20] * (4096 / 512));
-		pmw3.setPWM(i, 0, levels[i + 30] * (4096 / 512));
-		pmw4.setPWM(i, 0, levels[i + 40] * (4096 / 512));
+		pwm0.setPWM(i, 0, e131.data[i + 0] * (4096 / 256));
+		pwm1.setPWM(i, 0, e131.data[i + 10] * (4096 / 256));
+		pwm2.setPWM(i, 0, e131.data[i + 20] * (4096 / 256));
+		pwm3.setPWM(i, 0, e131.data[i + 30] * (4096 / 256));
+		pwm4.setPWM(i, 0, e131.data[i + 40] * (4096 / 256));
 	}
 }
 
 void loop()
 {
-	if (e131.parsePacket()) {
+	if (e131.parsePacket()) 
+	{
 
-		if (e131.universe == UNIVERSE && e131.packet->priority != 0) {
-
-			byte newLevel = e131.data[ADDRESS - 1];
-			if (newLevel != level)
-			{
-				analogWrite(PIN, newLevel);
-				level = newLevel;
-			}
-			digitalWrite(LED, 0);
+		if (e131.universe == UNIVERSE && e131.packet->priority != 0) 
+		{
+			//int temp = (int)((e131.data[10] / 255.0) * 100);
+			//String outStr = String(temp);
+			//char buf[10];
+			//outStr.toCharArray(buf, 10, 0);
+			//Serial.write(buf);
+			//Serial.write("\n");
+			setLevels();
 		}
 
 	}
 
-	setLevels();
+	
 }
